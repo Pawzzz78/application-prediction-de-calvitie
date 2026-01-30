@@ -20,10 +20,8 @@ def entrainer_modele(fichier_csv="bald_probability.csv", use_random_forest=True)
     # Charger les données
     df = pd.read_csv(fichier_csv)
     
-    # Nettoyer les données (supprimer les lignes avec des valeurs manquantes)
     df_clean = df.dropna()
     
-    # Vérifier si la colonne cible existe
     if "bald_prob" not in df_clean.columns:
         raise ValueError("La colonne 'bald_prob' n'existe pas dans le fichier CSV")
     
@@ -40,7 +38,6 @@ def entrainer_modele(fichier_csv="bald_probability.csv", use_random_forest=True)
         ("cat", OneHotEncoder(handle_unknown="ignore"), cat_features)
     ], remainder="passthrough")
     
-    # Choisir le modèle en fonction du paramètre
     if use_random_forest:
         # Modèle RandomForest optimisé pour de meilleures prédictions
         regressor = RandomForestRegressor(
@@ -59,13 +56,10 @@ def entrainer_modele(fichier_csv="bald_probability.csv", use_random_forest=True)
         ("regressor", regressor)
     ])
     
-    # Diviser les données en ensembles d'entraînement et de test
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-    
-    # Entraîner le modèle
+
     pipeline.fit(X_train, y_train)
     
-    # Sauvegarder le modèle
     model_filename = 'modele_calvitie_rf.joblib' if use_random_forest else 'modele_calvitie.joblib'
     joblib.dump(pipeline, model_filename)
     
@@ -76,10 +70,8 @@ def predire_calvitie(age, genre, role_professionnel, province, salaire, est_mari
     """
     Prédit la probabilité de calvitie en fonction des caractéristiques de la personne.
     """
-    # Déterminer le fichier de modèle en fonction du type de modèle
     model_file = 'modele_calvitie_rf.joblib' if use_random_forest else 'modele_calvitie.joblib'
     
-    # Charger le modèle ou l'entraîner s'il n'existe pas
     if os.path.exists(model_file):
         try:
             pipeline = joblib.load(model_file)
@@ -88,7 +80,6 @@ def predire_calvitie(age, genre, role_professionnel, province, salaire, est_mari
     else:
         pipeline = entrainer_modele(use_random_forest=use_random_forest)
     
-    # Créer un DataFrame avec les caractéristiques de la personne
     donnees_personne = pd.DataFrame({
         'age': [age],
         'gender': [genre],
@@ -162,14 +153,12 @@ def home():
 def reset_model():
     """Endpoint pour forcer la réinitialisation du modèle"""
     try:
-        # Supprimer les anciens modèles
         if os.path.exists('modele_calvitie.joblib'):
             os.remove('modele_calvitie.joblib')
             
         if os.path.exists('modele_calvitie_rf.joblib'):
             os.remove('modele_calvitie_rf.joblib')
         
-        # Entraîner un nouveau modèle RandomForest
         entrainer_modele(use_random_forest=True)
         
         return jsonify({
@@ -185,10 +174,8 @@ def reset_model():
 @app.route('/predict', methods=['POST'])
 def predict():
     try:
-        # Récupérer les données du formulaire
         data = request.form
         
-        # Convertir les données
         age = int(data.get('age'))
         genre = data.get('genre')
         role_professionnel = data.get('role_professionnel')
@@ -203,13 +190,11 @@ def predict():
         education = data.get('education')
         stress = int(data.get('stress'))
         
-        # Faire la prédiction
         probabilite = predire_calvitie(
             age, genre, role_professionnel, province, salaire, est_marie, est_hereditaire,
             poids, taille, shampoing, est_fumeur, education, stress
         )
         
-        # Interpréter le résultat
         resultat = interpreter_probabilite(probabilite)
         
         return render_template('result.html', 
@@ -224,10 +209,8 @@ def predict():
 @app.route('/api/predict', methods=['POST'])
 def api_predict():
     try:
-        # Récupérer les données JSON
         data = request.json
         
-        # Convertir les données
         age = int(data.get('age'))
         genre = data.get('genre')
         role_professionnel = data.get('role_professionnel')
@@ -242,13 +225,11 @@ def api_predict():
         education = data.get('education')
         stress = int(data.get('stress'))
         
-        # Faire la prédiction
         probabilite = predire_calvitie(
             age, genre, role_professionnel, province, salaire, est_marie, est_hereditaire,
             poids, taille, shampoing, est_fumeur, education, stress
         )
         
-        # Interpréter le résultat
         resultat = interpreter_probabilite(probabilite)
         
         return jsonify({
@@ -261,9 +242,6 @@ def api_predict():
         return jsonify({"error": str(e)})
 
 if __name__ == '__main__':
-    # Initialiser le modèle avant de démarrer l'application
     initier_modele()
-    
-    # Démarrer l'application
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=False) 
